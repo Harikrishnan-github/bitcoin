@@ -43,7 +43,6 @@
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
-#include <QDateTime>
 #include <QDesktopServices>
 #include <QDesktopWidget>
 #include <QDoubleValidator>
