@@ -5,6 +5,7 @@
 
 #include <script/script.h>
 
+#include <span.h>
 #include <tinyformat.h>
 #include <utilstrencodings.h>
 
@@ -281,18 +282,16 @@ bool CScript::HasValidOps() const
     return true;
 }
 
-bool GetScriptOp(CScriptBase::const_iterator& pc, CScriptBase::const_iterator end, opcodetype& opcodeRet, std::vector<unsigned char>* pvchRet)
+bool GetScriptOp(Span<const unsigned char>& script, opcodetype& opcodeRet, std::vector<unsigned char>* pvchRet)
 {
     opcodeRet = OP_INVALIDOPCODE;
     if (pvchRet)
         pvchRet->clear();
-    if (pc >= end)
-        return false;
 
     // Read instruction
-    if (end - pc < 1)
-        return false;
-    unsigned int opcode = *pc++;
+    if (script.size() < 1) return false;
+    unsigned int opcode = script[0];
+    script = script.subspan(1);
 
     // Immediate operand
     if (opcode <= OP_PUSHDATA4)
@@ -304,31 +303,37 @@ bool GetScriptOp(CScriptBase::const_iterator& pc, CScriptBase::const_iterator en
         }
         else if (opcode == OP_PUSHDATA1)
         {
-            if (end - pc < 1)
-                return false;
-            nSize = *pc++;
+            if (script.size() < 1) return false;
+            nSize = script[0];
+            script = script.subspan(1);
         }
         else if (opcode == OP_PUSHDATA2)
         {
-            if (end - pc < 2)
-                return false;
-            nSize = ReadLE16(&pc[0]);
-            pc += 2;
+            if (script.size() < 2) return false;
+            nSize = ReadLE16(script.data());
+            script = script.subspan(2);
         }
         else if (opcode == OP_PUSHDATA4)
         {
-            if (end - pc < 4)
-                return false;
-            nSize = ReadLE32(&pc[0]);
-            pc += 4;
+            if (script.size() < 4) return false;
+            nSize = ReadLE32(script.data());
+            script = script.subspan(4);
         }
-        if (end - pc < 0 || (unsigned int)(end - pc) < nSize)
-            return false;
-        if (pvchRet)
-            pvchRet->assign(pc, pc + nSize);
-        pc += nSize;
+        if (script.size() < nSize) return false;
+        if (pvchRet) pvchRet->assign(script.begin(), script.begin() + nSize);
+        script = script.subspan(nSize);
     }
 
     opcodeRet = static_cast<opcodetype>(opcode);
     return true;
+}
+
+bool GetScriptOp(CScriptBase::const_iterator& pc, CScriptBase::const_iterator end, opcodetype& opcodeRet, std::vector<unsigned char>* pvchRet)
+{
+    if (pc >= end) return false;
+    ptrdiff_t old_size = end - pc;
+    Span<const unsigned char> script(&*pc, old_size);
+    bool ret = GetScriptOp(script, opcodeRet, pvchRet);
+    pc += (old_size - script.size());
+    return ret;
 }
