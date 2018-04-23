@@ -23,7 +23,12 @@ public:
     constexpr Span(C* data, std::ptrdiff_t size) noexcept : m_data(data), m_size(size) {}
 
     constexpr C* data() const noexcept { return m_data; }
+    constexpr C* begin() const noexcept { return m_data; }
+    constexpr C* end() const noexcept { return m_data + m_size; }
     constexpr std::ptrdiff_t size() const noexcept { return m_size; }
+    constexpr C& operator[](std::ptrdiff_t pos) const noexcept { return m_data[pos]; }
+
+    constexpr Span<C> subspan(std::ptrdiff_t offset) const noexcept { return Span<C>(m_data + offset, m_size - offset); }
 };
 
 /** Create a span to a container exposing data() and size().
